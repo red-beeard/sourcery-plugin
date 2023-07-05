@@ -11,10 +11,7 @@ let package = Package(
 	targets: [
 		.plugin(
 			name: "SourceryCommand",
-			capability: .command(
-				intent: .custom(verb: "sourcery-code-generation", description: "Generates Swift files from a given set of inputs"),
-				permissions: [.writeToPackageDirectory(reason: "Need access to the package directory to generate files")]
-			),
+			capability: .buildTool(),
 			dependencies: ["Sourcery"]
 		),
 		.binaryTarget(
