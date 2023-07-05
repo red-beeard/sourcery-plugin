@@ -2,21 +2,30 @@ import PackagePlugin
 import Foundation
 
 @main
-struct MySwiftLintPlugin: BuildToolPlugin {
-	func createBuildCommands(context: PluginContext, target: Target) async throws -> [Command] {
-		let dir = context.pluginWorkDirectory.appending("Sourcery")
-		try? FileManager.default.removeItem(atPath: dir.string)
-		try FileManager.default.createDirectory(atPath: dir.string, withIntermediateDirectories: false)
+struct SourceryCommand: CommandPlugin {
+	func performCommand(context: PluginContext, arguments: [String]) async throws {
+		let configFilePath = context.package.directory.appending(subpath: ".sourcery.yml").string
+		guard FileManager.default.fileExists(atPath: configFilePath) else {
+			Diagnostics.error("Could not find config at: \(configFilePath)")
+			return
+		}
 		
-		let current = FileManager.default.currentDirectoryPath
+		let sourceryExecutable = try context.tool(named: "sourcery")
+		let sourceryURL = URL(fileURLWithPath: sourceryExecutable.path.string)
 		
-		return [
-			.prebuildCommand(
-				displayName: "Sourcery",
-				executable: .init("/usr/local/bin/sourcery"),
-				arguments: [current],
-				outputFilesDirectory: dir
-			)
+		let process = Process()
+		process.executableURL = sourceryURL
+		
+		process.arguments = [
+			"--disableCache"
 		]
+		
+		try process.run()
+		process.waitUntilExit()
+		
+		let gracefulExit = process.terminationReason == .exit && process.terminationStatus == 0
+		if !gracefulExit {
+			Diagnostics.error("🛑 The plugin execution failed")
+		}
 	}
 }
